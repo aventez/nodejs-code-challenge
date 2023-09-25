@@ -1,36 +1,45 @@
-import express, { Request, Response, NextFunction } from 'express';
-import json from 'body-parser';
-import fetch from 'node-fetch';
-import { Product } from './types';
+import bodyParser from 'body-parser'
+import express, { type Application } from 'express'
+import type Controller from './interfaces/controller.interface'
+import errorMiddleware from './middleware/error.middleware'
+import { requireEnv } from './utils/requireEnv'
 
-const app = express();
+class App {
+  public app: express.Application
 
-app.use(json());
+  constructor (controllers: Controller[]) {
+    this.app = express()
 
-app.get('/', (req: Request, res: Response) => {
-  res.send('Hello, World!');
-});
+    this.initializeMiddlewares()
+    this.initializeControllers(controllers)
+    this.initializeErrorHandling()
+  }
 
-app.get('/products', async (req: Request, res: Response) => {
-  const products: Product[] = [];
-  // put your code here
-  res.send(products);
-});
+  public listen (): void {
+    const port = requireEnv('PORT')
 
-app.post('/products', async (req: Request, res: Response) => {
-  res.send();
-});
+    this.app.listen(port, () => {
+      console.log(`* App listening on the port ${port}`)
+    })
+  }
 
-app.post('/login', async (req: Request, res: Response) => {
-  res.send();
-});
+  public getServer (): Application {
+    return this.app
+  }
 
-app.post('/cart', async (req: Request, res: Response) => {
-  res.send();
-});
+  private initializeMiddlewares (): void {
+    this.app.use(bodyParser.json())
+  }
 
-app.use((req: Request, res: Response, next: NextFunction) => {
-  res.status(404).send();
-});
+  private initializeErrorHandling (): void {
+    this.app.use(errorMiddleware)
+  }
 
-export default app;
+  private initializeControllers (controllers: Controller[]): void {
+    controllers.forEach((controller) => {
+      this.app.use('/', controller.router)
+    })
+  }
+}
+
+export default App
